@@ -35,12 +35,9 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 			(cd $rnd_path && zip -q -r ../$document_name .)
                         echo "+++ Cleaning of file $document_name have been completed!"
                 else
+			cp $document_path/001.Original_Documents/$document_name $document_path/002.Cleaned_Documents/$document_name
                         echo "--- No URLs were found found in $document_name !"
                 fi
-
-
-   		#egrep  -orlZ $regex $rnd_path | xargs -0 sed -i -E "s/$regex/$replace_with/g"
-   		#(cd $rnd_path && zip -r ../$document_name .)
    		rm -rf $rnd_path
 		printf "_______________________________________________________________________________________________________________________________________\n"
 
@@ -73,6 +70,6 @@ fi
 
 
 
-echo "##################################################-DOC-################################################################################"
+printf "\n\n\n##################################################-DOC-################################################################################\n"
 echo "TODO"
 echo "_______________________________________________________________________________________________________________________________________"
