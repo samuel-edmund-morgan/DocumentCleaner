@@ -17,6 +17,5 @@ do
    unzip $document_fullpath -d $rnd_path
    egrep  -orlZ $regex $rnd_path | xargs -0 sed -i -E "s/$regex/$replace_with/g"
    (cd $rnd_path && zip -r ../$document_name .)
-  #Delete
-   #rm -rf $rnd_path
+   rm -rf $rnd_path
 done
