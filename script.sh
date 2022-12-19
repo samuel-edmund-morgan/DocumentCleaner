@@ -1,4 +1,15 @@
 #!/bin/bash
+
+#Skip dir with names
+find /home/samuel/Documents/ -type f -iname "*.docx" > /home/samuel/allDocx
+IFS=$'\n'
+docx_array=( $(grep -v -e "001.Original_Documents" -e "002.Cleaned_Documents"  /home/samuel/allDocx) )
+
+
+
+
+
+
 IFS=$'\n'
 docx_array=( $(find /home/samuel/Documents/ -type f -iname "*.docx") )
 regex='Target[[:space:]]*=[[:space:]]*[(\")|('"'"')|(\`)](https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|][(\")|('"'"')(\`)]'
