@@ -122,13 +122,13 @@ if [ "${#rtf_array[@]}" -gt 0 ]; then
 		if [[ $(egrep  -orl $regex $DUMP_DIR/$document_path/$document_name) ]]; then
 			egrep  -orlZ $regex $DUMP_DIR/$document_path/$document_name | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
-			echo "+++ Чистка файлу ${docx_array[i]} завершена!"
-			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+			echo "+++ Чистка файлу ${rtf_array[i]} завершена!"
+			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$LOG_FILE"
 		else
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
-    			echo "--- Файл ${docx_array[i]} чистий!"
-                        echo "[$(date +"%T - %d.%m.%y")] : Файл ${docx_array[i]} чистий!" >> "$LOG_FILE"
+    			echo "--- Файл ${rtf_array[i]} чистий!"
+                        echo "[$(date +"%T - %d.%m.%y")] : Файл ${rtf_array[i]} чистий!" >> "$LOG_FILE"
 		fi
 		printf "___________________________________________________________________________________________________________________________________________________________\n"
         done
@@ -159,13 +159,13 @@ if [ "${#doc_array[@]}" -gt 0 ]; then
 				done
 				xxd -r -p  $DUMP_DIR/$document_path/tmpconvert/$document_name > $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
-				echo "+++ Чистка файлу ${docx_array[i]} завершена!"
-                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+				echo "+++ Чистка файлу ${doc_array[i]} завершена!"
+                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$LOG_FILE"
 			else
 				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
-                                echo "--- Файл ${docx_array[i]} чистий!"
-                                echo "[$(date +"%T - %d.%m.%y")] : Файл ${docx_array[i]} чистий!" >> "$LOG_FILE"
+                                echo "--- Файл ${doc_array[i]} чистий!"
+                                echo "[$(date +"%T - %d.%m.%y")] : Файл ${doc_array[i]} чистий!" >> "$LOG_FILE"
                         fi
 			rm -rf $DUMP_DIR/$document_path/tmpconvert/
 			printf "___________________________________________________________________________________________________________________________________________________________\n"
