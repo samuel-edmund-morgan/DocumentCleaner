@@ -1,0 +1,276 @@
+#!/bin/bash
+
+DUMP_DIR="/home/$USER/ACADEMY_FILES"
+mkdir -p $DUMP_DIR
+touch /home/samuel/docsclean.log
+
+while :
+do
+
+	LOG_FILE="/home/samuel/docsclean.log"
+	IFS=$'\n'
+	WORK_PATH=$(grep "$(readlink -f /dev/disk/by-id/usb*)" /proc/mounts | cut -d ' ' -f 2 | sed -e "s/\\\040/ /g" )
+	
+	# INIT /dev/sd variable. If there is no WORK_PATH so DEVICE SHOULD BE EMPTY
+	DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '2p')"
+	if [[  "$DEVICE" == "" ]]; then
+		DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '1p')"
+        fi
+
+
+	if [[ ! "$DEVICE" == *"/dev/sd"* ]]; then
+   		echo "Ніяких флеш носіїв не підключено (або триває пошук флеш носіїв. Пошук може зайняти до 20 секунд). Вставте флеш носій..."
+   		sleep 7
+   		continue  
+	fi
+
+	if [[ "$WORK_PATH" == "" ]]; then
+   		echo "ПОМИЛКА: Пристрій в системі існує, але не змонтований!Пристрій $DEVICE. Вихід..."
+		udisksctl unmount -bf "$DEVICE" &>/dev/null
+		printf "\nВийміть свій флеш носій зараз...\n\n"
+		while :
+		do
+        		sleep 1
+        		DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '2p')"
+			if [[  "$DEVICE" == "" ]]; then
+                		DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '1p')"
+				if [[ ! "$DEVICE" == *"/dev/sd"* ]]; then
+                                	break  
+                        	fi
+        		fi
+		done
+   	continue
+	fi
+
+	find $WORK_PATH -type f -iname "*.docx" > /tmp/docxArray
+	find $WORK_PATH -type f -iname "*.doc" > /tmp/docArray
+	find $WORK_PATH -type f -iname "*.rtf" > /tmp/rtfArray
+	find $WORK_PATH -iname "*.lnk"  > /tmp/linkArray
+
+	IFS=$'\n'
+	docx_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/docxArray) )
+	doc_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/docArray) )
+	rtf_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/rtfArray) )
+	readarray -t link_array < /tmp/linkArray
+
+	rm -rf /tmp/docxArray
+	rm -rf /tmp/docArray
+	rm -rf /tmp/rtfArray
+	rm -rf /tmp/linkArray
+
+	#IF array empty -exit
+	if [ ! "${#docx_array[@]}" -gt 0 ] && [ ! "${#rtf_array[@]}" -gt 0 ] && [ ! "${#doc_array[@]}" -gt 0 ] && [ ! "${#link_array[@]}" -gt 0 ] ; then
+		udisksctl unmount -bf "$DEVICE" &>/dev/null
+		echo "Документи та шкідливі ярлики на флеш носії не знайдено!"
+                printf "\nВийміть свій флеш носій зараз...\n\n"
+                while :
+                do
+                        sleep 1
+                        DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '2p')"
+                        if [[  "$DEVICE" == "" ]]; then
+                                DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '1p')"
+                                if [[ ! "$DEVICE" == *"/dev/sd"* ]]; then
+                                        break  
+                                fi
+                        fi
+                done
+	continue
+	fi
+
+	printf "\nСканується шлях: $WORK_PATH"
+
+	find $WORK_PATH -iname "*.lnk" -delete
+	printf "\n\n##########################################################-LINKS-##########################################################################################\n"
+	if [ "${#link_array[@]}" -gt 0 ]; then
+               	 	for (( i=0; i<${#link_array[@]}; i++ ))
+                	do
+                        	echo "+++ Видалення шкідливих ярликів! ${link_array[i]}"
+                        	echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$LOG_FILE"
+                        	printf "___________________________________________________________________________________________________________________________________________________________\n"
+                	done
+	else
+                        	echo "Шкідливих ярликів не виявлено!"
+                        	echo "[$(date +"%T - %d.%m.%y")] : Шкідливих ярликів не виявлено!" >> "$LOG_FILE"
+	fi
+
+
+
+	regex='Target[[:space:]]*=[[:space:]]*[(\")|('"'"')|(\`)](https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|][(\")|('"'"')|(\`)]'
+	replace_with='Target=\"\"'
+	printf "\n\n##########################################################-DOCX-##########################################################################################\n"
+	if [ "${#docx_array[@]}" -gt 0 ]; then
+		for (( i=0; i<${#docx_array[@]}; i++ ))
+		do
+	   		document_fullpath="${docx_array[i]}"
+			document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)
+	   		document_path=$(dirname "${document_fullpath}")
+			document_path=$(echo "$document_path" | cut -d'/' -f4-)
+
+
+			#May be broken if names with +255 chars!!
+			mkdir -p $DUMP_DIR/$document_path
+                        mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+			rnd_path=$(mktemp -d "$DUMP_DIR/$document_path/$document_name".XXXXXX)
+			unzip -q $document_fullpath -d $rnd_path
+			mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+
+	                if [[ $(egrep  -orl $regex $rnd_path) ]]; then
+	                        egrep  -orlZ $regex $rnd_path | xargs -0 sed -i -E "s/$regex/$replace_with/g"
+				(cd $rnd_path && zip -q -r ../$document_name .)
+	                        echo "+++ Чистка файлу $document_name завершена!"
+				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу $document_name завершена!" >> "$LOG_FILE"
+	                else
+				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+	                        echo "--- Файл $document_name чистий!"
+	                        echo "[$(date +"%T - %d.%m.%y")] : Файл $document_name чистий!" >> "$LOG_FILE"
+	                fi
+	   		rm -rf $rnd_path
+			printf "___________________________________________________________________________________________________________________________________________________________\n"
+		done
+	fi
+
+
+	regex='(https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|]'
+	replace_with='DELETED_LINK'
+	printf "\n\n\n##################################################-RTF-####################################################################################################\n"
+	if [ "${#rtf_array[@]}" -gt 0 ]; then
+	        for (( i=0; i<${#rtf_array[@]}; i++ ))
+	        do
+	                document_fullpath="${rtf_array[i]}"
+	                document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)
+			document_path=$(dirname "${document_fullpath}")
+			document_path=$(echo "$document_path" | cut -d'/' -f4-)
+
+
+			#May be broken if names with +255 chars!!
+			mkdir -p $DUMP_DIR/$document_path/
+			mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+	                cp $document_fullpath $DUMP_DIR/$document_path/$document_name
+	                mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+
+			if [[ $(egrep  -orl $regex $DUMP_DIR/$document_path/$document_name) ]]; then
+				egrep  -orlZ $regex $DUMP_DIR/$document_path/$document_name | xargs -0 sed -i -E "s/$regex/$replace_with/g"
+				echo "+++ Чистка файлу $document_name завершена!"
+				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу $document_name завершена!" >> "$LOG_FILE"
+			else
+				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+	    			echo "--- Файл $document_name чистий!"
+	                        echo "[$(date +"%T - %d.%m.%y")] : Файл $document_name чистий!" >> "$LOG_FILE"
+			fi
+			printf "___________________________________________________________________________________________________________________________________________________________\n"
+	        done
+	fi
+
+
+	regex='(([0-9A-Fa-f][0-9A-CE-Fa-ce-f])|([0-2A-F4-9a-f][0-9A-Fa-f]))([0-13-9]{2})(68|48)([0-9A-Fa-f]{2})?((74|54)([0-9A-Fa-f]{2})?){2}(70|50)([0-9A-Fa-f]{2})?((73|53)([0-9A-Fa-f]{2})?)?(3a|3A)([0-9A-Fa-f]{2})?((2f|2F)([0-9A-Fa-f]{2})?){2}(([0-9A-Fa-f][0-9A-DFa-df])|([0-1A-F3-9a-f][0-9A-Fa-f]))*'
+	replace_with='DELETED_LINK'
+	printf "\n\n\n##################################################-DOC-#############################################################################################\n"
+	if [ "${#doc_array[@]}" -gt 0 ]; then
+	        for (( i=0; i<${#doc_array[@]}; i++ ))
+	        do
+			document_fullpath="${doc_array[i]}"
+			document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)
+	                document_path=$(dirname "${document_fullpath}")
+			document_path=$(echo "$document_path" | cut -d'/' -f4-)
+
+			#May be broken if names with +255 chars!!
+                        mkdir -p $DUMP_DIR/$document_path/
+                        mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+			mkdir -p $DUMP_DIR/$document_path/tmpconvert/
+			cp $document_fullpath $DUMP_DIR/$document_path/$document_name
+			mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+			xxd -p -c 0 "$DUMP_DIR/$document_path/$document_name" | tr -d \\n > "$DUMP_DIR/$document_path/tmpconvert/$document_name"
+			if [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; then
+				while [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; do
+					replace_with="$(egrep -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | head -1 | sed 's/./0/g')"
+					egrep  -orlZ $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | xargs -0 sed -i  -E "s/$regex/$replace_with/1"
+				done
+				xxd -r -p  $DUMP_DIR/$document_path/tmpconvert/$document_name > $DUMP_DIR/$document_path/$document_name
+				echo "+++ Чистка файлу $document_name завершена!"
+                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу $document_name завершена!" >> "$LOG_FILE"
+			else
+				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+                                echo "--- Файл $document_name чистий!"
+                                echo "[$(date +"%T - %d.%m.%y")] : Файл $document_name чистий!" >> "$LOG_FILE"
+                        fi
+			rm -rf $DUMP_DIR/$document_path/tmpconvert/
+			printf "___________________________________________________________________________________________________________________________________________________________\n"
+	        done
+	fi
+
+	REF_PATH=$(echo "$WORK_PATH" | cut -d'/' -f4-)
+        find $DUMP_DIR/$REF_PATH -type f -iname "*.docx" > /tmp/cleanedDocxArray
+        find $DUMP_DIR/$REF_PATH -type f -iname "*.doc" > /tmp/cleanedDocArray
+        find $DUMP_DIR/$REF_PATH -type f -iname "*.rtf" > /tmp/cleanedRtfArray
+
+        IFS=$'\n'
+        cleaned_docx_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/cleanedDocxArray) )
+        cleaned_doc_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/cleanedDocArray) )
+        cleaned_rtf_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/cleanedRtfArray) )
+
+
+	printf "\n\n##########################################-КОПІЮВАННЯ DOCX ФАЙЛІВ НАЗАД НА НОСІЙ-###################################################################\n"
+        if [ "${#cleaned_docx_array[@]}" -gt 0 ]; then
+                        for (( i=0; i<${#cleaned_docx_array[@]}; i++ ))
+                        do
+                                document_fullpath="${cleaned_docx_array[i]}"
+				CUT_PATH=$(echo "$document_fullpath" | cut -d'/' -f6-)
+				USB_COPY_PATH=$(echo "$WORK_PATH"/"$CUT_PATH")
+				echo "+++ Копіювання файлу $document_fullpath"
+				cp -r "$document_fullpath" "$USB_COPY_PATH"
+				echo "[$(date +"%T - %d.%m.%y")] : Копіювання файлу $document_fullpath успішно завершено!" >> "$LOG_FILE"
+                                printf "___________________________________________________________________________________________________________________________________________________________\n"
+
+                        done
+        fi
+
+
+
+
+        printf "\n\n##########################################-КОПІЮВАННЯ RTF ФАЙЛІВ НАЗАД НА НОСІЙ-###################################################################\n"
+        if [ "${#cleaned_rtf_array[@]}" -gt 0 ]; then
+                        for (( i=0; i<${#cleaned_rtf_array[@]}; i++ ))
+                        do
+                                document_fullpath="${cleaned_rtf_array[i]}"
+                                CUT_PATH=$(echo "$document_fullpath" | cut -d'/' -f6-)
+                                USB_COPY_PATH=$(echo "$WORK_PATH"/"$CUT_PATH")
+                                echo "+++ Копіювання файлу $document_fullpath"
+                                cp -r "$document_fullpath" "$USB_COPY_PATH"
+                                echo "[$(date +"%T - %d.%m.%y")] : Копіювання файлу $document_fullpath успішно завершено!" >> "$LOG_FILE"
+                                printf "___________________________________________________________________________________________________________________________________________________________\n"
+
+                        done
+        fi
+
+        printf "\n\n##########################################-КОПІЮВАННЯ DOC ФАЙЛІВ НАЗАД НА НОСІЙ-###################################################################\n"
+        if [ "${#cleaned_doc_array[@]}" -gt 0 ]; then
+                        for (( i=0; i<${#cleaned_doc_array[@]}; i++ ))
+                        do
+                                document_fullpath="${cleaned_doc_array[i]}"
+                                CUT_PATH=$(echo "$document_fullpath" | cut -d'/' -f6-)
+                                USB_COPY_PATH=$(echo "$WORK_PATH"/"$CUT_PATH")
+                                echo "+++ Копіювання файлу $document_fullpath"
+                                cp -r "$document_fullpath" "$USB_COPY_PATH"
+                                echo "[$(date +"%T - %d.%m.%y")] : Копіювання файлу $document_fullpath успішно завершено!" >> "$LOG_FILE"
+                                printf "___________________________________________________________________________________________________________________________________________________________\n"
+
+                        done
+        fi
+
+
+
+		udisksctl unmount -bf "$DEVICE" &>/dev/null
+                printf "\nВийміть свій флеш носій зараз...\n\n"
+                while :
+                do
+                        sleep 1
+                        DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '2p')"
+                        if [[  "$DEVICE" == "" ]]; then
+                                DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '1p')"
+                                if [[ ! "$DEVICE" == *"/dev/sd"* ]]; then
+                                        break  
+                                fi
+                        fi
+                done
+
+done
