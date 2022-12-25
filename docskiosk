@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DUMP_DIR="/home/$USER/ACADEMY_FILES"
+DUMP_DIR="/home/$USER/.docsclean_dump.d"
 mkdir -p $DUMP_DIR
-touch /home/samuel/docsclean.log
+touch /home/$USER/docsclean.log
 
 while :
 do
@@ -79,8 +79,9 @@ do
 
 	printf "\nСканується шлях: $WORK_PATH"
 
-	find $WORK_PATH -iname "*.lnk" -delete
+	
 	printf "\n\n##########################################################-LINKS-##########################################################################################\n"
+	find $WORK_PATH -iname "*.lnk" -delete
 	if [ "${#link_array[@]}" -gt 0 ]; then
                	 	for (( i=0; i<${#link_array[@]}; i++ ))
                 	do
@@ -204,9 +205,14 @@ do
         find $DUMP_DIR/$REF_PATH -type f -iname "*.rtf" > /tmp/cleanedRtfArray
 
         IFS=$'\n'
-        cleaned_docx_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/cleanedDocxArray) )
-        cleaned_doc_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/cleanedDocArray) )
-        cleaned_rtf_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/cleanedRtfArray) )
+        cleaned_docx_array=( $(grep -v -e "001.Original_Documents" /tmp/cleanedDocxArray) )
+        cleaned_doc_array=( $(grep -v -e "001.Original_Documents" /tmp/cleanedDocArray) )
+        cleaned_rtf_array=( $(grep -v -e "001.Original_Documents" /tmp/cleanedRtfArray) )
+
+
+	rm -rf /tmp/cleanedDocxArray
+	rm -rf /tmp/cleanedDocArray
+	rm -rf /tmp/cleanedRtfArray
 
 
 	printf "\n\n##########################################-КОПІЮВАННЯ DOCX ФАЙЛІВ НАЗАД НА НОСІЙ-###################################################################\n"
