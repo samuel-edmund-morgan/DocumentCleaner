@@ -1,0 +1,13 @@
+[Unit]
+Description=USB cleaner
+After=network.target
+StartLimitIntervalSec=0
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=samuel
+ExecStart=/home/samuel/ForWork/docsclean.sh
+
+[Install]
+WantedBy=multi-user.target

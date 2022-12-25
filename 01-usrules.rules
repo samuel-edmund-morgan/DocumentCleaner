@@ -1,0 +1,2 @@
+SUBSYSTEM=="usb", ACTION=="add", RUN+="/bin/sh -c '/etc/udev/rules.d/log_script.sh add  $attr{idProduct} $attr{idVendor} \"$attr{manufacturer}\" \"$attr{product}\"  \"$attr{serial}\"'"
+SUBSYSTEM=="usb", ACTION=="remove", RUN+="/bin/sh -c '/etc/udev/rules.d/log_script.sh remove $attr{idProduct} $attr{idVendor} \"$attr{manufacturer}\" \"$attr{product}\"  \"$attr{serial}\"'"

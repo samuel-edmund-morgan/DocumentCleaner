@@ -1,5 +1,4 @@
 #!/bin/bash
-AGREEMENT=/home/samuel/Music/AGREEMENT
 DUMP_DIR="/home/$USER/.docsclean_dump.d"
 mkdir -p $DUMP_DIR
 LOG_FILE="/home/$USER/docsclean.log"
@@ -7,29 +6,73 @@ touch /home/$USER/docsclean.log
 IFS=$'\n'
 
 
+cat <<EOF > /tmp/AGREEMENT
+DocumentCleaner
+Версія 1.0, Грудень 2022
+
+	Застосунок DocumentCleaner розроблений спеціально для потреб Академії з ліквідації наслідків кіберцнцидентів спровокованих зараженнями електронних документів форматів doc, docx, rtf, а також для автоматичного видалення ярликів (lnk).
+В даній версії реалізована автоматична чистка документів за обраним шляхом розташування.
+Застосунок може сканувати документи, окрім тих, які знаходяться в архівах (zip, rar, tar.gz, 7z і т.д).
+
+	Початкові версії застосунунку роблять резервну копію ваших документів (docx, rtf та doc). Даний функціонал запроваджений ТІЛЬКИ на етап тестування, до моменту впровадження максимально стабільної роботи, окрім того, рекомендується перед використанням додатково зробити резервну копію власних документів які плануєте чистити.
+
+	За обраним шляхом сканування буде:
+
+1) Видалено ВСІ ярлики (lnk).
+
+2) Документи формату docx будуть перезібрані з видаленням посилань на шаблони, а також активних посилань у документі (посилання залишаться, проте, будуть неактивні).
+
+3) Документи формату rtf втратять ВСІ наявні посилання у своєму складі.
+
+4) Документи формату doc будуть перезібрані у шістнадцяткову систему числення, знайдені та видалені ВСІ посилання та перезібрані назад у doc.
+
+	Зсуви форматувань у документах docx, rtf, doc - НЕ спостерігались. Про всі виявлені зсуви формату після використання програми повідовляти у ВІТ.
+
+Програма розроблена у 3 версіях:
+
+1) docsgui - графічна версія програми. Розроблена і протестована на операційній системі Ubuntu 22.04. 
+Залежності: Операційна система на базі ядра Linux, gnome, coreutils або busybox, udev, xdd, udisks2, zip, unzip, українські локалі.
+
+2) docscli  - версія для використання у командному рядку. Розроблена і протестована на операційній системі Ubuntu 22.04. 
+Залежності: Операційна система на базі ядра Linux, coreutils або busybox, udev, xdd, udisks2, zip, unzip, українські локалі.
+
+3) docskiosk - версія для запуску у режимі кіоску. Застосунок запускається у системі та постійно очікує на флеш носій. Все що необхідно користувачу - це вставити флеш носій в USB порт та дочекатись повідомлення про дозвіл виймати флеш носій. Данна версія розроблена для роботи з флеш носіями. Використовувати з застосунком флеш носій, який заповнений більше ніж на 95% НЕ рекомендується.
+Залежності: Операційна система на базі ядра Linux, coreutils або busybox, udev, xdd, udisks2, zip, unzip, українські локалі.
+
+	Всі дії застосунку записуються(логуються) для оформлення звітів про виконану роботу.
+Початкові версії застосунку роблять
+
+	УВАГА! Застосунок працює в тестовому режимі. Розробник НЕ несе відповідальності за цілісність Ваших документів. Використовуйте на свій страх та ризик. Методи заражень та реалізації кіберзагроз щодня змінюються, тому гарантувати 100% кіберзахист, так само як і роботу даного застосунку - неможливо.
+	Відгуки про роботу застосунку, скарги та побажання, поради для розширення функціоналу направляйте у ВІТ.
+EOF
+
+
 
 zenity --text-info \
        --title="DocumentCleaner: Умови використання" \
         --ok-label  "Обрати шлях для сканування"  \
         --cancel-label "Відмовляюсь" \
-        --filename=$AGREEMENT \
+        --width 500 \
+       --height 300 \
+        --filename=/tmp/AGREEMENT \
        --checkbox="Я прочитав(ла) і погоджуюсь з умовами використання."
 
 RESULT="$?"
 if [[ "$RESULT" -eq 0 ]]; then
+	rm -rf /tmp/AGREEMENT
         WORK_PATH=$(zenity --file-selection --title "Оберіть шлях для сканування" --filename "/home/${USER}/" --directory)
         	if [[ "$WORK_PATH" == "" ]]; then
    		zenity --error \
        			--title "Помилка!" \
-       			--width 500 \
-       			--height 100 \
+       			--width 600 \
+       			--height 800 \
        			--text "Шлях не обрано!"
 		exit 0
 		fi
 else
+	rm -rf /tmp/AGREEMENT
         exit 0
 fi
-
 
 find $WORK_PATH -type f -iname "*.docx" > /tmp/docxArray
 find $WORK_PATH -type f -iname "*.doc" > /tmp/docArray
@@ -64,7 +107,7 @@ if [ ! "${#docx_array[@]}" -gt 0 ] && [ ! "${#rtf_array[@]}" -gt 0 ] && [ ! "${#
 	zenity --info \
        --title "Повідомлення про результат" \
        --width 500 \
-       --height 100 \
+       --height 300 \
        --text "Документи та шкідливі ярлики за шляхом $WORK_PATH не знайдено!"
         exit 0
 fi
@@ -108,13 +151,13 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 		echo "$percent_counter"
 		
                 if [[ $(egrep  -orl $regex $rnd_path/word/_rels/) ]]; then
-                	if [ -f "$rnd_path/word/_rels/settings.xml.rels" ]; then
+                	
                 	((danger_docx_count++))
                         egrep  -orlZ $regex $rnd_path/word/_rels/settings.xml.rels | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			(cd $rnd_path && zip -q -r ../$document_name .)
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
-			fi
+			
                 else
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
@@ -200,6 +243,9 @@ echo "$danger_docx_count" >> /tmp/malwareCounter
 echo "$danger_doc_count" >> /tmp/malwareCounter
 echo "$danger_rtf_count" >> /tmp/malwareCounter
 ) | zenity --progress \
+         --width 500 \
+         --height 300 \
+         --pulsate \
          --title="Очищення документів" \
          --text="Початок сканування..." \
           --percentage=0
@@ -216,5 +262,5 @@ rm -rf /tmp/malwareCounter
 zenity --warning \
        --title "Увага! Знайдені та знаешкоджені загрози" \
        --width 500 \
-       --height 100 \
+       --height 300 \
        --text "За вказаним шляхом пошуку $WORK_PATH було знайдено: \n - Ярликів: $danger_link_count \n - Документів docx: $danger_docx_count \n - Документів rtf: $danger_rtf_count \n - Документів doc: $danger_doc_count \n"

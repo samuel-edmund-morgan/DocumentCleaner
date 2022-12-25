@@ -83,12 +83,14 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 		unzip -q $document_fullpath -d $rnd_path
 		mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
 		
-                if [[ $(egrep  -orl $regex $rnd_path) ]]; then
+                if [[ $(egrep  -orl $regex $rnd_path/word/_rels/) ]]; then
+                	
                         egrep  -orlZ $regex $rnd_path | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			(cd $rnd_path && zip -q -r ../$document_name .)
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
                         echo "+++ Чистка файлу ${docx_array[i]} завершена!"
 			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+			
                 else
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
