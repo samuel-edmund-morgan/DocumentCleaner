@@ -1,0 +1,220 @@
+#!/bin/bash
+AGREEMENT=/home/samuel/Music/AGREEMENT
+DUMP_DIR="/home/$USER/.docsclean_dump.d"
+mkdir -p $DUMP_DIR
+LOG_FILE="/home/$USER/docsclean.log"
+touch /home/$USER/docsclean.log
+IFS=$'\n'
+
+
+
+zenity --text-info \
+       --title="DocumentCleaner: Умови використання" \
+        --ok-label  "Обрати шлях для сканування"  \
+        --cancel-label "Відмовляюсь" \
+        --filename=$AGREEMENT \
+       --checkbox="Я прочитав(ла) і погоджуюсь з умовами використання."
+
+RESULT="$?"
+if [[ "$RESULT" -eq 0 ]]; then
+        WORK_PATH=$(zenity --file-selection --title "Оберіть шлях для сканування" --filename "/home/${USER}/" --directory)
+        	if [[ "$WORK_PATH" == "" ]]; then
+   		zenity --error \
+       			--title "Помилка!" \
+       			--width 500 \
+       			--height 100 \
+       			--text "Шлях не обрано!"
+		exit 0
+		fi
+else
+        exit 0
+fi
+
+
+find $WORK_PATH -type f -iname "*.docx" > /tmp/docxArray
+find $WORK_PATH -type f -iname "*.doc" > /tmp/docArray
+find $WORK_PATH -type f -iname "*.rtf" > /tmp/rtfArray
+find $WORK_PATH -iname "*.lnk"  > /tmp/linkArray
+
+link_count=$(wc -l < /tmp/linkArray)
+docx_count=$(wc -l < /tmp/docxArray)
+doc_count=$(wc -l < /tmp/docArray)
+rtf_count=$(wc -l < /tmp/rtfArray)
+sum=$((link_count +docx_count + doc_count + rtf_count))
+one_percent=$(echo 100 $sum | awk '{print $1 / $2}')
+percent_counter=0
+danger_link_count=0
+danger_docx_count=0
+danger_doc_count=0
+danger_rtf_count=0
+
+IFS=$'\n'
+docx_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/docxArray) )
+doc_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/docArray) )
+rtf_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/rtfArray) )
+readarray -t link_array < /tmp/linkArray
+
+rm -rf /tmp/docxArray
+rm -rf /tmp/docArray
+rm -rf /tmp/rtfArray
+rm -rf /tmp/linkArray
+
+
+if [ ! "${#docx_array[@]}" -gt 0 ] && [ ! "${#rtf_array[@]}" -gt 0 ] && [ ! "${#doc_array[@]}" -gt 0 ] && [ ! "${#link_array[@]}" -gt 0 ] ; then
+	zenity --info \
+       --title "Повідомлення про результат" \
+       --width 500 \
+       --height 100 \
+       --text "Документи та шкідливі ярлики за шляхом $WORK_PATH не знайдено!"
+        exit 0
+fi
+
+
+
+(
+echo "# Очищення ярликів..."
+find $WORK_PATH -iname "*.lnk" -delete
+if [ "${#link_array[@]}" -gt 0 ]; then
+	for (( i=0; i<${#link_array[@]}; i++ ))
+        do
+        	danger_link_count=$((danger_link_count + 1))
+        	percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
+        	echo "$percent_counter"
+                echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$LOG_FILE"
+        done
+else
+       echo "[$(date +"%T - %d.%m.%y")] : Шкідливих ярликів не виявлено!" >> "$LOG_FILE"
+fi
+
+
+
+regex='Target[[:space:]]*=[[:space:]]*[(\")|('"'"')|(\`)](https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|][(\")|('"'"')|(\`)]'
+replace_with='Target=\"\"'
+echo "# Очищення docx..."
+if [ "${#docx_array[@]}" -gt 0 ]; then
+	for (( i=0; i<${#docx_array[@]}; i++ ))
+	do
+   		document_fullpath="${docx_array[i]}"
+		document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)	
+		document_path=$(dirname "${document_fullpath}")
+		document_path=$(echo "$document_path" | cut -d'/' -f4-)
+		percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
+		#May be broken if names with +255 chars!!
+   		mkdir -p $DUMP_DIR/$document_path
+   		mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+   		rnd_path=$(mktemp -d "$DUMP_DIR/$document_path/$document_name".XXXXXX)
+		unzip -q $document_fullpath -d $rnd_path
+		mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+		echo "$percent_counter"
+		
+                if [[ $(egrep  -orl $regex $rnd_path/word/_rels/) ]]; then
+                	if [ -f "$rnd_path/word/_rels/settings.xml.rels" ]; then
+                	((danger_docx_count++))
+                        egrep  -orlZ $regex $rnd_path/word/_rels/settings.xml.rels | xargs -0 sed -i -E "s/$regex/$replace_with/g"
+			(cd $rnd_path && zip -q -r ../$document_name .)
+			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+			fi
+                else
+			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+                        echo "[$(date +"%T - %d.%m.%y")] : Файл ${docx_array[i]} чистий!" >> "$LOG_FILE"
+                fi
+                
+   		rm -rf $rnd_path
+	done
+fi
+
+
+regex='(https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|]'
+replace_with='DELETED_LINK'
+echo "# Очищення rtf..."
+if [ "${#rtf_array[@]}" -gt 0 ]; then
+        for (( i=0; i<${#rtf_array[@]}; i++ ))
+        do
+                document_fullpath="${rtf_array[i]}"
+                document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)
+		document_path=$(dirname "${document_fullpath}")
+		document_path=$(echo "$document_path" | cut -d'/' -f4-)
+		percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
+		#May be broken if names with +255 chars!!
+                mkdir -p $DUMP_DIR/$document_path
+                mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+                cp $document_fullpath $DUMP_DIR/$document_path/$document_name 
+                mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+                echo "$percent_counter"
+		if [[ $(egrep  -orl $regex $DUMP_DIR/$document_path/$document_name) ]]; then
+			((danger_rtf_count++))
+			egrep  -orlZ $regex $DUMP_DIR/$document_path/$document_name | xargs -0 sed -i -E "s/$regex/$replace_with/g"
+			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$LOG_FILE"
+		else
+			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+                        echo "[$(date +"%T - %d.%m.%y")] : Файл ${rtf_array[i]} чистий!" >> "$LOG_FILE"
+		fi
+        done
+fi
+
+
+regex='(([0-9A-Fa-f][0-9A-CE-Fa-ce-f])|([0-2A-F4-9a-f][0-9A-Fa-f]))([0-13-9]{2})(68|48)([0-9A-Fa-f]{2})?((74|54)([0-9A-Fa-f]{2})?){2}(70|50)([0-9A-Fa-f]{2})?((73|53)([0-9A-Fa-f]{2})?)?(3a|3A)([0-9A-Fa-f]{2})?((2f|2F)([0-9A-Fa-f]{2})?){2}(([0-9A-Fa-f][0-9A-DFa-df])|([0-1A-F3-9a-f][0-9A-Fa-f]))*'
+replace_with='DELETED_LINK'
+echo "# Очищення doc..."
+if [ "${#doc_array[@]}" -gt 0 ]; then
+        for (( i=0; i<${#doc_array[@]}; i++ ))
+        do
+		document_fullpath="${doc_array[i]}"
+                document_name=$(echo $document_fullpath | sed -e "s/ /_/g" | rev | cut -d/ -f1 | rev)
+                document_path=$(dirname "${document_fullpath}")
+                document_path=$(echo "$document_path" | cut -d'/' -f4-)
+                percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
+                echo "$percent_counter"
+                #May be broken if names with +255 chars!!
+                mkdir -p $DUMP_DIR/$document_path/
+                mkdir -p $DUMP_DIR/$document_path/001.Original_Documents/
+		mkdir -p $DUMP_DIR/$document_path/tmpconvert/
+		cp $document_fullpath $DUMP_DIR/$document_path/$document_name
+		mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
+		xxd -p -c 0 "$DUMP_DIR/$document_path/$document_name" | tr -d \\n > "$DUMP_DIR/$document_path/tmpconvert/$document_name"
+			if [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; then
+				((danger_doc_count++))
+				while [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; do
+					replace_with="$(egrep -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | head -1 | sed 's/./0/g')"
+					egrep  -orlZ $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | xargs -0 sed -i  -E "s/$regex/$replace_with/1"
+				done
+				xxd -r -p  $DUMP_DIR/$document_path/tmpconvert/$document_name > $DUMP_DIR/$document_path/$document_name
+				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$LOG_FILE"
+			else
+				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
+				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
+                                echo "[$(date +"%T - %d.%m.%y")] : Файл ${doc_array[i]} чистий!" >> "$LOG_FILE"
+                        fi
+			rm -rf $DUMP_DIR/$document_path/tmpconvert/
+			printf "___________________________________________________________________________________________________________________________________________________________\n"
+	done
+fi
+echo "# Сканування і очищення закінчене..."
+echo "$danger_link_count" >> /tmp/malwareCounter
+echo "$danger_docx_count" >> /tmp/malwareCounter
+echo "$danger_doc_count" >> /tmp/malwareCounter
+echo "$danger_rtf_count" >> /tmp/malwareCounter
+) | zenity --progress \
+         --title="Очищення документів" \
+         --text="Початок сканування..." \
+          --percentage=0
+if [ "$?" = -1 ] ; then
+        zenity --error \
+          --text="Помилка сканування!"
+        exit 0
+fi
+danger_link_count=$(sed '1q;d' /tmp/malwareCounter)
+danger_docx_count=$(sed '2q;d' /tmp/malwareCounter)
+danger_doc_count=$(sed '3q;d' /tmp/malwareCounter)
+danger_rtf_count=$(sed '4q;d' /tmp/malwareCounter)
+rm -rf /tmp/malwareCounter
+zenity --warning \
+       --title "Увага! Знайдені та знаешкоджені загрози" \
+       --width 500 \
+       --height 100 \
+       --text "За вказаним шляхом пошуку $WORK_PATH було знайдено: \n - Ярликів: $danger_link_count \n - Документів docx: $danger_docx_count \n - Документів rtf: $danger_rtf_count \n - Документів doc: $danger_doc_count \n"
