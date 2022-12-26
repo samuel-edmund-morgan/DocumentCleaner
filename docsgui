@@ -5,7 +5,7 @@ LOG_FILE="/home/$USER/docsclean.log"
 touch /home/$USER/docsclean.log
 IFS=$'\n'
 
-
+rm -rf /tmp/detailed_report
 cat <<EOF > /tmp/AGREEMENT
 DocumentCleaner
 Версія 1.0, Грудень 2022
@@ -116,7 +116,7 @@ fi
 
 (
 echo "# Очищення ярликів..."
-printf "\nЗнайдені ярлики:" >> /tmp/detailed_report
+printf "\nЗнайдені ярлики:\n" >> /tmp/detailed_report
 find $WORK_PATH -iname "*.lnk" -delete
 if [ "${#link_array[@]}" -gt 0 ]; then
 	for (( i=0; i<${#link_array[@]}; i++ ))
@@ -264,22 +264,36 @@ danger_docx_count=$(sed '2q;d' /tmp/malwareCounter)
 danger_doc_count=$(sed '3q;d' /tmp/malwareCounter)
 danger_rtf_count=$(sed '4q;d' /tmp/malwareCounter)
 rm -rf /tmp/malwareCounter
-zenity --warning \
+
+ret_answer=1
+while [ $ret_answer -eq 1 ]; do
+answer=$(zenity --warning \
        --title "Увага! Знайдені та знешкоджені заражені документи" \
        --width 500 \
        --height 300 \
+       --extra-button "Деталі" \
+       --ok-label  "Окей"  \
        --text "За вказаним шляхом пошуку $WORK_PATH було знайдено: \n - Ярликів: $danger_link_count \n - Документів docx: $danger_docx_count \n - Документів rtf: $danger_rtf_count \n - Документів doc: $danger_doc_count \n"
-       
-       
+ )
+ret_answer=$?
+if [[ $answer = "Деталі" ]]
+then
 zenity --text-info \
        --title="Детальний огляд" \
-        --ok-label  "Добре"  \
-        --cancel-label "Закрити" \
+        --ok-label  "Вихід"  \
+        --cancel-label "Назад" \
         --width 800 \
        --height 800 \
         --filename=/tmp/detailed_report
         
-rm -rf /tmp/malwareCounter
+        DETAILED_ANSWER="$?"
+	if [[ "$DETAILED_ANSWER" -eq 0 ]]; then
+		exit 0
+	fi
+
+fi
+done
+rm -rf /tmp/detailed_report
         
          
        
