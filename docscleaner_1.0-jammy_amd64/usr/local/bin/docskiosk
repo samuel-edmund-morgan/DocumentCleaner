@@ -7,7 +7,7 @@ touch /home/$USER/docsclean.log
 while :
 do
 
-	LOG_FILE="/home/samuel/docsclean.log"
+	LOG_FILE="/home/$USER/docsclean.log"
 	IFS=$'\n'
 	WORK_PATH=$(grep "$(readlink -f /dev/disk/by-id/usb*)" /proc/mounts | cut -d ' ' -f 2 | sed -e "s/\\\040/ /g" )
 	

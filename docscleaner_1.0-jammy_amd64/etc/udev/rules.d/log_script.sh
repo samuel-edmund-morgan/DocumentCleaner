@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_FILE="/home/samuel/docsclean.log"
+LOG_FILE="/var/log/docsclean.log"
 touch "$LOG_FILE"
 chmod 666 "$LOG_FILE"
 
