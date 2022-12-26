@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=/usr/local/bin/docsgui
+Name=Document Cleaner
+Comment=Clean links, doc, docx,rtf files
+Icon=/usr/share/pixmaps/docscleaner.png

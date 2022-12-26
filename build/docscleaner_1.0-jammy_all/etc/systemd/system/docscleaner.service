@@ -1,5 +1,5 @@
 [Unit]
-Description=USB cleaner
+Description=Downloads cleaner
 After=network.target
 StartLimitIntervalSec=0
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=samuel
-ExecStart=/home/samuel/ForWork/docsclean.sh
+ExecStart=/usr/local/bin/docscli /home/$USER/Downloads
 
 [Install]
 WantedBy=multi-user.target
