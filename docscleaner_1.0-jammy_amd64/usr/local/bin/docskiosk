@@ -51,7 +51,8 @@ do
 	docx_array=( $(grep -v -e "001.Original_Documents" -e "\/\."  /tmp/docxArray) )
 	doc_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/docArray) )
 	rtf_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/rtfArray) )
-	readarray -t link_array < /tmp/linkArray
+	link_array=( $(grep -v -e "001.Original_Documents"  -e "\/\."  /tmp/linkArray) )
+	#readarray -t link_array < /tmp/linkArray
 
 	rm -rf /tmp/docxArray
 	rm -rf /tmp/docArray
