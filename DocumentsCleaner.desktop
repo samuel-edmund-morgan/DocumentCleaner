@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=/home/samuel/DocumentCleaner/docsgui
+Name=Document Cleaner
+Comment=Cleans links, doc, docx,rtf files
+Icon=/home/samuel/DocumentCleaner/docscleaner2.png

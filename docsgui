@@ -52,8 +52,8 @@ zenity --text-info \
        --title="DocumentCleaner: Умови використання" \
         --ok-label  "Обрати шлях для сканування"  \
         --cancel-label "Відмовляюсь" \
-        --width 500 \
-       --height 300 \
+        --width 800 \
+       --height 800 \
         --filename=/tmp/AGREEMENT \
        --checkbox="Я прочитав(ла) і погоджуюсь з умовами використання."
 
@@ -64,8 +64,8 @@ if [[ "$RESULT" -eq 0 ]]; then
         	if [[ "$WORK_PATH" == "" ]]; then
    		zenity --error \
        			--title "Помилка!" \
-       			--width 600 \
-       			--height 800 \
+       			--width 500 \
+       			--height 300 \
        			--text "Шлях не обрано!"
 		exit 0
 		fi
@@ -116,11 +116,13 @@ fi
 
 (
 echo "# Очищення ярликів..."
+printf "\nЗнайдені ярлики:" >> /tmp/detailed_report
 find $WORK_PATH -iname "*.lnk" -delete
 if [ "${#link_array[@]}" -gt 0 ]; then
 	for (( i=0; i<${#link_array[@]}; i++ ))
         do
         	danger_link_count=$((danger_link_count + 1))
+        	echo "${link_array[i]}" >> /tmp/detailed_report
         	percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
         	echo "$percent_counter"
                 echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$LOG_FILE"
@@ -134,6 +136,7 @@ fi
 regex='Target[[:space:]]*=[[:space:]]*[(\")|('"'"')|(\`)](https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|][(\")|('"'"')|(\`)]'
 replace_with='Target=\"\"'
 echo "# Очищення docx..."
+printf "\nЗнайдені docx:\n" >> /tmp/detailed_report
 if [ "${#docx_array[@]}" -gt 0 ]; then
 	for (( i=0; i<${#docx_array[@]}; i++ ))
 	do
@@ -150,9 +153,9 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 		mv $document_fullpath $DUMP_DIR/$document_path/001.Original_Documents/$document_name
 		echo "$percent_counter"
 		
-                if [[ $(egrep  -orl $regex $rnd_path/word/_rels/) ]]; then
-                	
+                if [[ $(egrep  -orl $regex $rnd_path/word/_rels/settings.xml.rels) ]]; then
                 	((danger_docx_count++))
+                	echo "${docx_array[i]}" >> /tmp/detailed_report
                         egrep  -orlZ $regex $rnd_path/word/_rels/settings.xml.rels | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			(cd $rnd_path && zip -q -r ../$document_name .)
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
@@ -162,8 +165,7 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
                         echo "[$(date +"%T - %d.%m.%y")] : Файл ${docx_array[i]} чистий!" >> "$LOG_FILE"
-                fi
-                
+                fi  
    		rm -rf $rnd_path
 	done
 fi
@@ -172,6 +174,7 @@ fi
 regex='(https?|ftp|file):\/\/[-[:alnum:]\+&@#\/%?=~_|.;]*[-[:alnum:]\+&@#\/%=~_|]'
 replace_with='DELETED_LINK'
 echo "# Очищення rtf..."
+printf "\nЗнайдені rtf:\n" >> /tmp/detailed_report
 if [ "${#rtf_array[@]}" -gt 0 ]; then
         for (( i=0; i<${#rtf_array[@]}; i++ ))
         do
@@ -188,6 +191,7 @@ if [ "${#rtf_array[@]}" -gt 0 ]; then
                 echo "$percent_counter"
 		if [[ $(egrep  -orl $regex $DUMP_DIR/$document_path/$document_name) ]]; then
 			((danger_rtf_count++))
+			echo "${rtf_array[i]}" >> /tmp/detailed_report
 			egrep  -orlZ $regex $DUMP_DIR/$document_path/$document_name | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$LOG_FILE"
@@ -203,6 +207,7 @@ fi
 regex='(([0-9A-Fa-f][0-9A-CE-Fa-ce-f])|([0-2A-F4-9a-f][0-9A-Fa-f]))([0-13-9]{2})(68|48)([0-9A-Fa-f]{2})?((74|54)([0-9A-Fa-f]{2})?){2}(70|50)([0-9A-Fa-f]{2})?((73|53)([0-9A-Fa-f]{2})?)?(3a|3A)([0-9A-Fa-f]{2})?((2f|2F)([0-9A-Fa-f]{2})?){2}(([0-9A-Fa-f][0-9A-DFa-df])|([0-1A-F3-9a-f][0-9A-Fa-f]))*'
 replace_with='DELETED_LINK'
 echo "# Очищення doc..."
+printf "\nЗнайдені doc:\n" >> /tmp/detailed_report
 if [ "${#doc_array[@]}" -gt 0 ]; then
         for (( i=0; i<${#doc_array[@]}; i++ ))
         do
@@ -221,6 +226,7 @@ if [ "${#doc_array[@]}" -gt 0 ]; then
 		xxd -p -c 0 "$DUMP_DIR/$document_path/$document_name" | tr -d \\n > "$DUMP_DIR/$document_path/tmpconvert/$document_name"
 			if [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; then
 				((danger_doc_count++))
+				echo "${doc_array[i]}" >> /tmp/detailed_report
 				while [[ $(egrep  -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name) ]]; do
 					replace_with="$(egrep -or -m 1 $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | head -1 | sed 's/./0/g')"
 					egrep  -orlZ $regex $DUMP_DIR/$document_path/tmpconvert/$document_name | xargs -0 sed -i  -E "s/$regex/$replace_with/1"
@@ -245,7 +251,6 @@ echo "$danger_rtf_count" >> /tmp/malwareCounter
 ) | zenity --progress \
          --width 500 \
          --height 300 \
-         --pulsate \
          --title="Очищення документів" \
          --text="Початок сканування..." \
           --percentage=0
@@ -260,7 +265,22 @@ danger_doc_count=$(sed '3q;d' /tmp/malwareCounter)
 danger_rtf_count=$(sed '4q;d' /tmp/malwareCounter)
 rm -rf /tmp/malwareCounter
 zenity --warning \
-       --title "Увага! Знайдені та знаешкоджені загрози" \
+       --title "Увага! Знайдені та знешкоджені заражені документи" \
        --width 500 \
        --height 300 \
        --text "За вказаним шляхом пошуку $WORK_PATH було знайдено: \n - Ярликів: $danger_link_count \n - Документів docx: $danger_docx_count \n - Документів rtf: $danger_rtf_count \n - Документів doc: $danger_doc_count \n"
+       
+       
+zenity --text-info \
+       --title="Детальний огляд" \
+        --ok-label  "Добре"  \
+        --cancel-label "Закрити" \
+        --width 800 \
+       --height 800 \
+        --filename=/tmp/detailed_report
+        
+rm -rf /tmp/malwareCounter
+        
+         
+       
+       
