@@ -3,13 +3,37 @@
 DUMP_DIR="/home/$USER/.docsclean_dump.d"
 mkdir -p $DUMP_DIR
 touch /home/$USER/docsclean.log
+#added v1.1
+touch /home/$USER/docsclean_cleaned.log
+
 
 while :
 do
+cat <<EOF > /tmp/ACADEMY.reg
+Windows Registry Editor Version 5.00
 
+[HKEY_CURRENT_USER\SOFTWARE\Policies\Microsoft\Windows\System]
+"DisableCMD"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer]
+"DisallowRun"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun]
+"1"="mshta.exe"
+"2"="powershell.exe"
+"3"="PowerShell_ISE.exe"
+"4"="wscript.exe"
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System]
+"DisableRegistryTools"=dword:00000001
+EOF
+	
 	LOG_FILE="/home/$USER/docsclean.log"
 	IFS=$'\n'
 	WORK_PATH=$(grep "$(readlink -f /dev/disk/by-id/usb*)" /proc/mounts | cut -d ' ' -f 2 | sed -e "s/\\\040/ /g" )
+	#added v1.1
+	CLEANED_LOG="/home/$USER/docsclean_cleaned.log"
+	
 	
 	# INIT /dev/sd variable. If there is no WORK_PATH so DEVICE SHOULD BE EMPTY
 	DEVICE="$(readlink -f /dev/disk/by-id/usb* | sed -n '2p')"
@@ -80,6 +104,14 @@ do
 
 	printf "\nСканується шлях: $WORK_PATH"
 
+
+printf "\n\n##########################################################-ФАЙЛ ПОЛІТИК WINDOWS-##########################################################################################\n"
+cp /tmp/ACADEMY.reg $WORK_PATH
+echo "[$(date +"%T - %d.%m.%y")] : Файл політик Windows у корінь флеш носія додано!" >> "$LOG_FILE"
+#added v1.1
+echo "[$(date +"%T - %d.%m.%y")] : Файл політик Windows у корінь флеш носія додано!" >> "$CLEANED_LOG"
+echo "+++ Файл політик Windows у корінь флеш носія додано!"
+printf "___________________________________________________________________________________________________________________________________________________________\n"
 	
 printf "\n\n##########################################################-ЯРЛИКИ-##########################################################################################\n"
 printf "___________________________________________________________________________________________________________________________________________________________\n"
@@ -89,6 +121,8 @@ printf "________________________________________________________________________
                 	do
                         	echo "+++ Видалення шкідливих ярликів! ${link_array[i]}"
                         	echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$LOG_FILE"
+                        	#added v1.1
+                		echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$CLEANED_LOG"
                         	printf "___________________________________________________________________________________________________________________________________________________________\n"
                 	done
 	else
@@ -123,6 +157,8 @@ printf "________________________________________________________________________
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 	                        echo "+++ Чистка файлу ${docx_array[i]} завершена!"
 				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+				#added v1.1
+				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$CLEANED_LOG"
 	                else
 				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
@@ -157,6 +193,8 @@ printf "________________________________________________________________________
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 				echo "+++ Чистка файлу ${rtf_array[i]} завершена!"
 				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$LOG_FILE"
+				#added v1.1
+				echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$CLEANED_LOG"
 			else
 				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
@@ -194,6 +232,8 @@ printf "________________________________________________________________________
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 				echo "+++ Чистка файлу ${doc_array[i]} завершена!"
                                 echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$LOG_FILE"
+                                #added v1.1
+                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$CLEANED_LOG"
 			else
 				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath

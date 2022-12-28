@@ -2,13 +2,17 @@
 DUMP_DIR="/home/$USER/.docsclean_dump.d"
 mkdir -p $DUMP_DIR
 LOG_FILE="/home/$USER/docsclean.log"
+#added v1.1
+CLEANED_LOG="/home/$USER/docsclean_cleaned.log"
+touch /home/$USER/docsclean_cleaned.log
+
 touch /home/$USER/docsclean.log
 IFS=$'\n'
 
 rm -rf /tmp/detailed_report
 cat <<EOF > /tmp/AGREEMENT
 DocumentCleaner
-Версія 1.0, Грудень 2022
+Версія 1.1, Грудень 2022
 
 	Застосунок DocumentCleaner розроблений спеціально для потреб Академії з ліквідації наслідків кіберцнцидентів спровокованих зараженнями електронних документів форматів doc, docx, rtf, а також для автоматичного видалення ярликів (lnk).
 В даній версії реалізована автоматична чистка документів за обраним шляхом розташування.
@@ -44,6 +48,12 @@ DocumentCleaner
 
 	УВАГА! Застосунок працює в тестовому режимі. Розробник НЕ несе відповідальності за цілісність Ваших документів. Використовуйте на свій страх та ризик. Методи заражень та реалізації кіберзагроз щодня змінюються, тому гарантувати 100% кіберзахист, так само як і роботу даного застосунку - неможливо.
 	Відгуки про роботу застосунку, скарги та побажання, поради для розширення функціоналу направляйте у ВІТ.
+	
+	Історія версій:
+	1.1 - Доданий файл запуску політик Windows у корінь флеш носія
+	      Доданий окремий файл журналу для документів, в яких було знайдено підозріле посилання
+	      
+	1.0 - Перша версія програми
 EOF
 
 
@@ -127,6 +137,8 @@ if [ "${#link_array[@]}" -gt 0 ]; then
         	percent_counter=$(echo $percent_counter $one_percent | awk '{print $1 + $2}')
         	echo "$percent_counter"
                 echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$LOG_FILE"
+                #added v1.1
+                echo "[$(date +"%T - %d.%m.%y")] : Ярлик ${link_array[i]} успішно видалено!" >> "$CLEANED_LOG"
         done
 else
        echo "[$(date +"%T - %d.%m.%y")] : Шкідливих ярликів не виявлено!" >> "$LOG_FILE"
@@ -161,6 +173,9 @@ if [ "${#docx_array[@]}" -gt 0 ]; then
 			(cd $rnd_path && zip -q -r ../$document_name .)
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$LOG_FILE"
+			#added v1.1
+			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${docx_array[i]} завершена!" >> "$CLEANED_LOG"
+			
 			
                 else
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
@@ -196,6 +211,8 @@ if [ "${#rtf_array[@]}" -gt 0 ]; then
 			egrep  -orlZ $regex $DUMP_DIR/$document_path/$document_name | xargs -0 sed -i -E "s/$regex/$replace_with/g"
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
 			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$LOG_FILE"
+			#added v1.1
+			echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${rtf_array[i]} завершена!" >> "$CLEANED_LOG"
 		else
 			cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 			cp $DUMP_DIR/$document_path/$document_name $document_fullpath
@@ -235,6 +252,8 @@ if [ "${#doc_array[@]}" -gt 0 ]; then
 				xxd -r -p  $DUMP_DIR/$document_path/tmpconvert/$document_name > $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
                                 echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$LOG_FILE"
+                                #added v1.1
+                                echo "[$(date +"%T - %d.%m.%y")] : Чистка файлу ${doc_array[i]} завершена!" >> "$CLEANED_LOG"
 			else
 				cp $DUMP_DIR/$document_path/001.Original_Documents/$document_name $DUMP_DIR/$document_path/$document_name
 				cp $DUMP_DIR/$document_path/$document_name $document_fullpath
