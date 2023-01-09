@@ -1,8 +1,8 @@
 Package: docscleaner
-Version: 1.0
+Version: 1.1
 Section: utils
 Priority: optional
 Architecture: amd64
-Depends: unzip (>= 6.0), zip (>= 3.0), xxd (>=2:5.2.3995), udisks2 (>=2.8.4), zenity (>=3.1..0)
+Depends: unzip (>= 6.0), zip (>= 3.0), xxd (>=2:5.2.3995), udisks2 (>=2.8.4), zenity (>=3.1)
 Maintainer: Samuel Morgan <samuel.edmund.morgan@protonmail.com>
 Description: Delete all links from doc, docx, rtf files.

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 LOG_FILE="/var/log/docsclean.log"
-touch "$LOG_FILE"
+#touch "$LOG_FILE"
 chmod 666 "$LOG_FILE"
 #added v1.1
 CLEANED_LOG="/var/log/docsclean_cleaned.log"
-touch "$CLEANED_LOG"
+#touch "$CLEANED_LOG"
 chmod 666 "$CLEANED_LOG"
 
 idProduct=$2    # ATTRS{idProduct}
